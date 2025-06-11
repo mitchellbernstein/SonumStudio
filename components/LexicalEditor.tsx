@@ -31,13 +31,7 @@ interface LexicalEditorProps {
   placeholder?: string;
 }
 
-// Initial editor state
-function prepareInitialEditorState(content: string | null): string | undefined {
-  if (!content) {
-    return undefined;
-  }
-  return content;
-}
+
 
 // Plugin to handle content changes
 function OnChangeHandler({ onChange }: { onChange: (content: string) => void }) {
@@ -56,7 +50,40 @@ function OnChangeHandler({ onChange }: { onChange: (content: string) => void }) 
   return null;
 }
 
-// Plugin to insert breaks and sound effects
+// Plugin to set initial content
+function InitialContentPlugin({ content }: { content: string | null }) {
+  const [editor] = useLexicalComposerContext();
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+
+  useEffect(() => {
+    if (content && !hasInitialized) {
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        
+        if (content.trim()) {
+          // Split content by lines and create paragraphs
+          const lines = content.split('\n');
+          lines.forEach((line) => {
+            const paragraphNode = $createParagraphNode();
+            const textNode = $createTextNode(line || ''); // Handle empty lines
+            paragraphNode.append(textNode);
+            root.append(paragraphNode);
+          });
+        } else {
+          // Create empty paragraph for empty content
+          const paragraphNode = $createParagraphNode();
+          root.append(paragraphNode);
+        }
+      });
+      setHasInitialized(true);
+    }
+  }, [editor, content, hasInitialized]);
+
+  return null;
+}
+
+// Plugin to insert breaks and sound effects, and handle undo/redo
 function BreakInsertPlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -75,12 +102,25 @@ function BreakInsertPlugin() {
       });
     };
 
-    // Expose method to parent component
+    const setContent = (content: string) => {
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        const paragraphNode = $createParagraphNode();
+        const textNode = $createTextNode(content);
+        paragraphNode.append(textNode);
+        root.append(paragraphNode);
+      });
+    };
+
+    // Expose methods to parent component
     (editor.getRootElement() as any)?.setAttribute('data-insert-break', 'true');
     (window as any).lexicalInsertBreak = insertBreak;
+    (window as any).lexicalSetContent = setContent;
 
     return () => {
       delete (window as any).lexicalInsertBreak;
+      delete (window as any).lexicalSetContent;
     };
   }, [editor]);
 
@@ -145,7 +185,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       LinkNode,
       AutoLinkNode,
     ],
-    editorState: prepareInitialEditorState(data),
+    // Don't set editorState here - we handle it via InitialContentPlugin
   };
 
   return (
@@ -167,6 +207,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             ErrorBoundary={LexicalErrorBoundary}
           />
           <OnChangeHandler onChange={onChange} />
+          <InitialContentPlugin content={data} />
           <HistoryPlugin />
           <ListPlugin />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />

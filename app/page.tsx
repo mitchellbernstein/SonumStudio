@@ -128,6 +128,11 @@ export default function HomePage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <Sidebar activeTab="home" onTabChange={(tab) => {
+        if (tab === 'studio') window.location.href = '/studio';
+        if (tab === 'speech-to-text') window.location.href = '/speech-to-text';
+      }} />
+      
       <HomeTab 
         onCreateScript={createScript}
         onOpenSpeechToText={() => window.location.href = '/speech-to-text'}

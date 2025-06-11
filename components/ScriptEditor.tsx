@@ -4,6 +4,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, RotateCcw, Download, Volume2, Tag, Trash2, Undo, Redo, Music, Plus, Minus, Pause, Clock, X, SkipBack, SkipForward, ArrowLeft } from 'lucide-react';
 import { Script, TTSResponse, AudioGeneration } from '@/types';
 import LexicalEditor from './LexicalEditor';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 
 interface ScriptEditorProps {
   script: Script | null;
@@ -368,16 +372,34 @@ export default function ScriptEditor({
   const handleUndo = () => {
     if (historyIndex > 0 && script) {
       const newIndex = historyIndex - 1;
+      const previousContent = history[newIndex];
       setHistoryIndex(newIndex);
-      handleContentChange(history[newIndex]);
+      
+      // Update the script content
+      const updatedScript = { ...script, content: previousContent };
+      onUpdateScript(updatedScript);
+      
+      // Use Lexical's global method for setting content if available
+      if ((window as any).lexicalSetContent) {
+        (window as any).lexicalSetContent(previousContent);
+      }
     }
   };
 
   const handleRedo = () => {
     if (historyIndex < history.length - 1 && script) {
       const newIndex = historyIndex + 1;
+      const nextContent = history[newIndex];
       setHistoryIndex(newIndex);
-      handleContentChange(history[newIndex]);
+      
+      // Update the script content
+      const updatedScript = { ...script, content: nextContent };
+      onUpdateScript(updatedScript);
+      
+      // Use Lexical's global method for setting content if available
+      if ((window as any).lexicalSetContent) {
+        (window as any).lexicalSetContent(nextContent);
+      }
     }
   };
 
@@ -445,12 +467,12 @@ export default function ScriptEditor({
             placeholder="Untitled Script"
           />
 
-          <button
+          <Button
             onClick={() => setShowPublishModal(true)}
-            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+            className="text-sm font-medium"
           >
             Publish
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -458,80 +480,73 @@ export default function ScriptEditor({
       <div className="border-b border-gray-200 p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <select
-              onChange={(e) => e.target.value && handleTextFormat(e.target.value)}
-              value=""
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="">Text</option>
-              <option value="h1">Heading 1</option>
-              <option value="h2">Heading 2</option>
-              <option value="h3">Heading 3</option>
-            </select>
+            <Select onValueChange={(value) => value && handleTextFormat(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Text" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="p">Text</SelectItem>
+                <SelectItem value="h1">Heading 1</SelectItem>
+                <SelectItem value="h2">Heading 2</SelectItem>
+                <SelectItem value="h3">Heading 3</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="w-px h-6 bg-gray-300"></div>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleUndo}
               disabled={historyIndex <= 0}
-              className="p-1.5 text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
               title="Undo"
+              className="p-1.5 h-auto"
             >
               <Undo className="w-4 h-4" />
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleRedo}
               disabled={historyIndex >= history.length - 1}
-              className="p-1.5 text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
               title="Redo"
+              className="p-1.5 h-auto"
             >
               <Redo className="w-4 h-4" />
-            </button>
+            </Button>
 
             <div className="w-px h-6 bg-gray-300"></div>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={insertTimeBreak}
-              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors"
               title="Insert time break"
+              className="p-1.5 h-auto"
             >
               <Pause className="w-4 h-4" />
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={insertSoundEffect}
-              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors"
               title="Insert sound effect"
+              className="p-1.5 h-auto"
             >
               <Music className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="flex items-center gap-2">
             {/* AudioPlayer Tabs */}
-            <div className="flex border border-gray-300 rounded-md overflow-hidden">
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  activeTab === 'settings'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Settings
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`px-3 py-1.5 text-sm font-medium border-l border-gray-300 transition-colors ${
-                  activeTab === 'history'
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                History
-              </button>
-            </div>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')}>
+              <TabsList className="grid w-40 grid-cols-2">
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </div>
@@ -658,28 +673,27 @@ export default function ScriptEditor({
         {!isPanelCollapsed && (
           <div className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full absolute right-0 top-0 bottom-0">
             {/* Tab Content */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              {activeTab === 'settings' ? (
-                /* Settings Tab */
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">TTS Settings</h3>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'settings' | 'history')} className="flex flex-col h-full">
+              <TabsContent value="settings" className="flex-1 overflow-y-auto m-0">
+                <div className="p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">TTS Settings</h3>
                     
                     <div className="space-y-4">
                       {/* Model Selection */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">TTS Model</label>
-                        <select
-                          value={model}
-                          onChange={(e) => onModelChange(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                        >
-                          {modelOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={model} onValueChange={onModelChange}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select TTS Model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {modelOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600">
                           <p><strong>{currentModelInfo.label}</strong></p>
                           <p>{currentModelInfo.description}</p>
@@ -693,17 +707,18 @@ export default function ScriptEditor({
                       {/* Voice Selection */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Voice</label>
-                        <select
-                          value={voice}
-                          onChange={(e) => onVoiceChange(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                        >
-                          {voiceOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={voice} onValueChange={onVoiceChange}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Voice" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {voiceOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Speed Control - Show for models that support it */}
@@ -712,14 +727,13 @@ export default function ScriptEditor({
                           <label className="block text-xs font-medium text-gray-700 mb-1">
                             Speed: {speed.toFixed(1)}x
                           </label>
-                          <input
-                            type="range"
-                            min="0.5"
-                            max="2.0"
-                            step="0.1"
-                            value={speed}
-                            onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                          <Slider
+                            value={[speed]}
+                            onValueChange={(value) => onSpeedChange(value[0])}
+                            max={2.0}
+                            min={0.5}
+                            step={0.1}
+                            className="w-full py-1"
                           />
                           <div className="flex justify-between text-xs text-gray-500 mt-1">
                             <span>0.5x</span>
@@ -733,14 +747,13 @@ export default function ScriptEditor({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           {model === 'lucataco/orpheus-3b-0.1-ft' ? 'Emotion' : 'Variation'}: {temperature.toFixed(1)}
                         </label>
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="1.0"
-                          step="0.1"
-                          value={temperature}
-                          onChange={(e) => onTemperatureChange(parseFloat(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                        <Slider
+                          value={[temperature]}
+                          onValueChange={(value) => onTemperatureChange(value[0])}
+                          max={1.0}
+                          min={0.1}
+                          step={0.1}
+                          className="w-full py-1"
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
                           <span>{model === 'lucataco/orpheus-3b-0.1-ft' ? 'Calm' : 'Consistent'}</span>
@@ -762,20 +775,19 @@ export default function ScriptEditor({
                       )}
                     </div>
                   </div>
-                </div>
-              ) : (
-                /* History Tab */
-                <div className="flex-1 overflow-y-auto">
+                </TabsContent>
+                
+                <TabsContent value="history" className="flex-1 overflow-y-auto m-0">
                   {/* Generation Button */}
                   <div className="p-4 border-b border-gray-200">
-                    <button
+                    <Button
                       onClick={onGenerateAudio}
                       disabled={isGenerating || !script.content || isContentEmpty(script.content)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      className="w-full flex items-center justify-center gap-2 py-3 font-medium"
                     >
                       <Play className="w-4 h-4" />
                       {isGenerating ? 'Generating...' : 'Generate Audio'}
-                    </button>
+                    </Button>
                     <div className="mt-2 text-xs text-gray-600 text-center">
                       <p>{script.audioGenerations.length} generation{script.audioGenerations.length !== 1 ? 's' : ''}</p>
                       <p>⏱️ Est. {currentModelInfo.estimatedTime} • 💰 {currentModelInfo.cost}</p>
@@ -895,9 +907,8 @@ export default function ScriptEditor({
                       })}
                     </div>
                   )}
-                </div>
-              )}
-            </div>
+                </TabsContent>
+              </Tabs>
           </div>
         )}
       </div>
@@ -921,15 +932,16 @@ export default function ScriptEditor({
             </div>
             
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setShowPublishModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button className="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors">
+              </Button>
+              <Button className="flex-1">
                 Publish
-              </button>
+              </Button>
             </div>
           </div>
         </div>
