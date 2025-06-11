@@ -1,15 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Script, AudioGeneration } from '@/types';
+import { Script } from '@/types';
 import Sidebar from '@/components/Sidebar';
 import HomeTab from '@/components/HomeTab';
-import StudioTab from '@/components/StudioTab';
-import SpeechToTextTab from '@/components/SpeechToTextTab';
-import ScriptEditor from '@/components/ScriptEditor';
-import AudioPlayer from '@/components/AudioPlayer';
-import { ArrowLeft } from 'lucide-react';
-import { getPublishedStats, ensureStorageBucket } from '@/utils/supabase';
+import { getPublishedStats } from '@/utils/supabase';
 import { supabaseStorage } from '@/utils/supabase-storage';
 
 // NSDR content templates
@@ -60,8 +55,6 @@ Continue this journey through your body - your abdomen, chest, shoulders, arms, 
 
 With each area you visit, allow deeper relaxation to wash over you like a gentle wave.`
 };
-
-type TabType = 'home' | 'studio' | 'speech-to-text';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
